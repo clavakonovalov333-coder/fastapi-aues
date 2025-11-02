@@ -2,22 +2,17 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+
 from . import models, schemas, crud
 from .database import engine, get_db, Base
 from .auth import create_access_token, require_role
-from fastapi import FastAPI
-
-app = FastAPI()
-@app.get("/")
-def home():
-    return {"message": "FastAPI работает ✅"}
-
 
 # create tables
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="AUES Admin API")
 
+# CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,6 +20,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ✅ Главная страница
+@app.get("/")
+def home():
+    return {"message": "FastAPI работает ✅"}
 
 # Auth token
 @app.post("/auth/token", response_model=schemas.Token)
@@ -36,14 +36,13 @@ def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db:
     access_token = create_access_token(token_data)
     return {"access_token": access_token, "token_type": "bearer"}
 
-# Users (SUPERADMIN and ADMIN allowed for management)
+# Users
 @app.post("/api/users", response_model=schemas.UserOut, dependencies=[Depends(require_role(["SUPERADMIN","ADMIN"]))])
 def api_create_user(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     existing = crud.get_user_by_email(db, user_in.email)
     if existing:
         raise HTTPException(status_code=400, detail="Email already registered")
-    user = crud.create_user(db, user_in)
-    return user
+    return crud.create_user(db, user_in)
 
 @app.get("/api/users", response_model=list[schemas.UserOut], dependencies=[Depends(require_role(["SUPERADMIN","ADMIN"]))])
 def api_list_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
