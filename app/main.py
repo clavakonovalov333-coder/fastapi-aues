@@ -5,6 +5,13 @@ from sqlalchemy.orm import Session
 from . import models, schemas, crud
 from .database import engine, get_db, Base
 from .auth import create_access_token, require_role
+from fastapi import FastAPI
+
+app = FastAPI()
+@app.get("/")
+def home():
+    return {"message": "FastAPI работает ✅"}
+
 
 # create tables
 Base.metadata.create_all(bind=engine)
